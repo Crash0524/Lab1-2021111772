@@ -1,0 +1,9 @@
+# 设置所有文本文件的行尾符为LF
+* text=auto
+
+# 强制特定文件类型使用LF
+*.sh text eol=lf
+*.py text eol=lf
+
+# 如果需要特定文件类型使用CRLF，可以这样设置
+# *.bat text eol=crlf
