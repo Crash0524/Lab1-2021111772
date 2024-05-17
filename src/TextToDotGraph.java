@@ -10,7 +10,6 @@ import java.util.concurrent.ThreadLocalRandom;
 public class TextToDotGraph {
     // 用于存储图的邻接表
     private Map<String, Map<String, Integer>> graph = new HashMap<>();
-    private String lastWord = null; //用于保存前一行的最后一个单词
     private String rootWord = null; //用于保存第一个单词(固定根节点为第一个单词)
     //    private Random random = new Random(); //用于随机选择桥接词
     private Random random = ThreadLocalRandom.current();  // 随机选择桥接词及随机游走时用到, 适用于在多线程环境
@@ -21,26 +20,36 @@ public class TextToDotGraph {
     public void readTxt(String txtFile) {
         try {
             Scanner scanner = new Scanner(new File(txtFile));
+
+            String lastWord = null; //用于保存前一行的最后一个单词
+
             while (scanner.hasNextLine()) {
                 String line = scanner.nextLine().toLowerCase();
-                String[] words = line.split("[^a-zA-Z]+");
+                String[] Words = line.split("[^a-zA-Z]+");
 //                for (String word : words) {
 //                    System.out.println(word);
 //                }
-                if (words.length == 0) continue;
+                // 过滤句首的空字符
+                String[] filteredWords = Arrays.stream(Words)
+                        .filter(word -> !word.isEmpty())
+                        .toArray(String[]::new);
+
+                if (filteredWords.length == 0) continue;
                 //固定图的根节点
                 if (rootWord == null) {
-                    rootWord = words[0];
+                    rootWord = filteredWords[0];
                 }
 
+                // 记录每行最后一个单词, 并与下一行首单词间添加边
                 if (lastWord != null) {
-                    addEdge(lastWord, words[0], 1);
+                    addEdge(lastWord, filteredWords[0], 1);
                 }
 
-                for (int i = 0; i < words.length - 1; i++) {
-                    addEdge(words[i], words[i + 1], 1);
+                for (int i = 0; i < filteredWords.length - 1; i++) {
+                    addEdge(filteredWords[i], filteredWords[i + 1], 1);
                 }
-                lastWord = words[words.length - 1];
+                lastWord = filteredWords[filteredWords.length - 1];
+
                 // 添加空边(最后一个单词没有出边, 其value值为0, 访问其会出现null错误)
                 graph.putIfAbsent(lastWord, new HashMap<>());
             }
@@ -77,7 +86,7 @@ public class TextToDotGraph {
         }
     }
 
-    public void convertDotToImage(String dotFilePath, String outputImagePath) {
+    public void showDirectedGraph(String dotFilePath, String outputImagePath) {
         try {
             // 构造 Graphviz 命令
             String[] cmd = {
@@ -95,6 +104,16 @@ public class TextToDotGraph {
                 System.err.println(line);
             }
 
+            // 根据系统类型展示生成有向图
+            String os = System.getProperty("os.name").toLowerCase();
+            if (os.contains("windows")) {
+                Runtime.getRuntime().exec("cmd /c start " + outputImagePath);
+            } else if (os.contains("mac")) {
+                Runtime.getRuntime().exec("open " + outputImagePath);
+            } else {
+                Runtime.getRuntime().exec("xdg-open " + outputImagePath);
+            }
+
             System.out.println("DOT file successfully converted to image.");
         } catch (IOException | InterruptedException e) {
             e.printStackTrace();
@@ -102,20 +121,20 @@ public class TextToDotGraph {
     }
 
     // 查询桥接词
-    public void findBridgeWords(String word1, String word2) {
+    public String queryBridgeWords(String word1, String word2) {
         word1 = word1.toLowerCase();
         word2 = word2.toLowerCase();
 
         if (!graph.containsKey(word1) && !graph.containsKey(word2)) {
-            System.out.printf("No \"%s\" and \"%s\" in the graph!\n", word1, word2);
-            return;
+//            System.out.printf("No \"%s\" and \"%s\" in the graph!\n", word1, word2);
+            return String.format("No \"%s\" and \"%s\" in the graph!", word1, word2);
         } else if (!graph.containsKey(word1)) {
-            System.out.printf("No \"%s\" in the graph!\n", word1);
-            return;
+//            System.out.printf("No \"%s\" in the graph!\n", word1);
+            return String.format("No \"%s\" in the graph!", word1);
         }
         else if (!graph.containsKey(word2)) {
-            System.out.printf("No \"%s\" in the graph!\n", word2);
-            return;
+//            System.out.printf("No \"%s\" in the graph!\n", word2);
+            return String.format("No \"%s\" in the graph!", word2);
         }
         Set<String> bridgeWords = new HashSet<>();
         Map<String, Integer> word1Edges = graph.get(word1);
@@ -128,16 +147,19 @@ public class TextToDotGraph {
         }
 
         if (bridgeWords.isEmpty()) {
-            System.out.println("No bridge words from \"" + word1 + "\" to \"" + word2 + "\"!");
+//            System.out.println("No bridge words from \"" + word1 + "\" to \"" + word2 + "\"!");
+            return "No bridge words from \"" + word1 + "\" to \"" + word2 + "\"!";
         } else {
-            System.out.print("The bridge words from \"" + word1 + "\" to \"" + word2 + "\" are: ");
+//            System.out.print("The bridge words from \"" + word1 + "\" to \"" + word2 + "\" are: ");
+            StringBuilder result = new StringBuilder("The bridge words from \"" + word1 + "\" to \"" + word2 + "\" are: ");
             int i = 0;
             for (String word : bridgeWords) {
-                if (i > 0) System.out.print(", ");
-                System.out.print(word);
+                if (i > 0) result.append(", ");
+                result.append(word);
                 i++;
             }
-            System.out.println(".");
+            result.append(".");
+            return result.toString();
         }
     }
 
@@ -163,7 +185,6 @@ public class TextToDotGraph {
         if (!graph.containsKey(word1)) {
             return null;
         }
-
         List<String> bridgeWords = new ArrayList<>();
         // 获取从 word1 出发的所有边
         Map<String, Integer> word1Edges = graph.get(word1);
@@ -184,7 +205,7 @@ public class TextToDotGraph {
 
     // 最短路径部分实现
     // 将图保存为带有标记路径的DOT文件
-    public void saveToDotFile_color(String outputFile, List<List<String>> shortestPaths) {
+    public void saveToDotFile_color(String outputFile, List<List<String>> shortestPaths, int pathLength) {
         List<String> dotLines = new ArrayList<>();
         // 不同最短路径的颜色也不同
         List<String> color = new ArrayList<>(Arrays.asList("blue", "red", "green", "orange", "pink"));
@@ -207,7 +228,6 @@ public class TextToDotGraph {
                     List<String> shortestPath = shortestPaths.get(i);
                     if((index1 = shortestPath.indexOf(from)) != -1 && (index2 = shortestPath.indexOf(to)) != -1)
                     {
-
                         if(index1 + 1 == index2)
                         {
                             if(flag != -1)
@@ -230,6 +250,9 @@ public class TextToDotGraph {
             }
         }
 
+        // 添加路径长度注释（使用黑色）
+        dotLines.add(String.format("    \"Path length = %d\" [label=\"Path length = %d\", color=\"black\", shape=none];", pathLength, pathLength));
+
         // 将所有 DOT 语句一次性写入文件
         try (PrintWriter writer = new PrintWriter(new FileWriter(outputFile))) {
             writer.println("digraph G {");
@@ -243,7 +266,7 @@ public class TextToDotGraph {
     }
 
     // 使用迪杰斯特拉算法计算最短路径
-    public List<List<String>> shortestPaths(String startWord, String endWord) {
+    public List<List<String>> shortestPaths(String startWord, String endWord, int[] pathLength) {
         startWord = startWord.toLowerCase();
         endWord = endWord.toLowerCase();
 
@@ -302,7 +325,7 @@ public class TextToDotGraph {
 
         // 构建所有从起点到终点的最短路径
         List<List<String>> shortestPaths = new ArrayList<>();
-        buildPaths(predecessors, shortestPaths, new LinkedList<>(), endWord, startWord);
+        buildPaths(predecessors, shortestPaths, new LinkedList<>(), endWord, startWord, distances, pathLength);
 
         if (shortestPaths.isEmpty())
         {
@@ -313,14 +336,16 @@ public class TextToDotGraph {
     }
 
     // 构建最短路径
-    private void buildPaths(Map<String, List<String>> predecessors, List<List<String>> paths, LinkedList<String> path, String current, String start) {
+    private void buildPaths(Map<String, List<String>> predecessors, List<List<String>> paths, LinkedList<String> path,
+                            String current, String start, Map<String, Integer> distances, int[] pathLength) {
         path.addFirst(current);
         if (current.equals(start)) {
             paths.add(new ArrayList<>(path));
+            pathLength[0] = distances.get(path.getLast());
         } else {
             if (predecessors.get(current) == null) return;
             for (String predecessor : predecessors.get(current)) {
-                buildPaths(predecessors, paths, path, predecessor, start);
+                buildPaths(predecessors, paths, path, predecessor, start, distances, pathLength);
             }
         }
         path.removeFirst();
@@ -339,7 +364,7 @@ public class TextToDotGraph {
                         stopRandomWalk = true;
                         break; // 停止循环
                     }
-                    Thread.sleep(1000); // 等待100毫秒
+                    Thread.sleep(100); // 等待100毫秒
                 }
 
                 // 检查是否收到了中断信号
@@ -367,11 +392,11 @@ public class TextToDotGraph {
         }
     }
 
-    public void randomWalk(String outputFile) {
+    public String randomWalk(String outputFile) {
         List<String> nodes = new ArrayList<>(graph.keySet());
         if (nodes.isEmpty()) {
-            System.out.println("The graph is empty!");
-            return;
+//            System.out.println("The graph is empty!");
+            return "The graph is empty!";
         }
         stopRandomWalk = false;
         // 开启监听
@@ -390,12 +415,12 @@ public class TextToDotGraph {
                 break;
             }
 
+            // 减慢随机游走速度
             try {
-                Thread.sleep(1000); // 毫秒
+                Thread.sleep(100); // 毫秒
             } catch (InterruptedException e) {
                 // 处理异常
             }
-
 
             List<String> nextNodes = new ArrayList<>(edges.keySet());
             String next = nextNodes.get(random.nextInt(nextNodes.size()));
@@ -414,14 +439,21 @@ public class TextToDotGraph {
         // 满足条件结束随机游走时自动停止监听
         stopStopListener();
 
-        System.out.print("The random walk path is: ");
+        // 构建路径字符串
+        StringBuilder result = new StringBuilder("The random walk path is: ");
+//        System.out.print("The random walk path is: ");
+//        for (String word : path) {
+//            System.out.printf("%s ", word);
+//        }
+//        System.out.print("\n");
         for (String word : path) {
-            System.out.printf("%s ", word);
+            result.append(word).append(" ");
         }
-        System.out.print("\n");
 
         savePathToFile(path, outputFile);
-        System.out.println("Random walk stopped. Path saved to " + outputFile);
+//        System.out.println("Random walk stopped. Path saved to " + outputFile);
+        result.append("\nRandom walk stopped. Path saved to ").append(outputFile);
+        return result.toString();
     }
 
     // 保存随机游走路径到文件
@@ -449,7 +481,7 @@ public class TextToDotGraph {
                     scanner.nextLine();
                 }
             }
-            catch (IOException e)
+            catch (IOException ignored)
             {
 
             }
@@ -469,7 +501,7 @@ public class TextToDotGraph {
                     String txtFile = scanner.nextLine();
                     graph.readTxt(txtFile);
                     graph.saveToDotFile("./out/text/output.dot");
-                    graph.convertDotToImage("./out/text/output.dot", "./out/png/graph.png");
+                    graph.showDirectedGraph("./out/text/output.dot", "./out/png/graph.png");
                     break;
 
                 case "2":
@@ -477,7 +509,8 @@ public class TextToDotGraph {
                     String word1 = scanner.nextLine();
                     System.out.print("Enter the second word: ");
                     String word2 = scanner.nextLine();
-                    graph.findBridgeWords(word1, word2);
+                    String result = graph.queryBridgeWords(word1, word2);
+                    System.out.println(result);
                     break;
 
                 case "3":
@@ -492,18 +525,21 @@ public class TextToDotGraph {
                     word1 = scanner.nextLine();
                     System.out.print("Enter the second word: ");
                     word2 = scanner.nextLine();
-                    List<List<String>> shortestPaths = graph.shortestPaths(word1, word2);
+
+                    int[] pathLength = new int[1];
+                    List<List<String>> shortestPaths = graph.shortestPaths(word1, word2, pathLength);
 
                     if (shortestPaths != null && !shortestPaths.isEmpty()) {
-                        graph.saveToDotFile_color("./out/text/output_with_path.dot", shortestPaths);
-                        graph.convertDotToImage("./out/text/output_with_path.dot", "./out/png/shortest_paths.png");
+                        graph.saveToDotFile_color("./out/text/output_with_path.dot", shortestPaths, pathLength[0]);
+                        graph.showDirectedGraph("./out/text/output_with_path.dot", "./out/png/shortest_paths.png");
                     }
                     break;
 
                 case "5":
                     System.out.print("Enter the output file path for random walk: ");
                     String outputFile = scanner.nextLine();
-                    graph.randomWalk(outputFile);
+                    String result2 = graph.randomWalk(outputFile);
+                    System.out.println(result2);
                     break;
 
                 case "6":
@@ -518,24 +554,7 @@ public class TextToDotGraph {
         }
 
 //        String fileName = "input.txt";
-//
-//        // 命令行读文件名
-////        if(args.length > 0){
-////            fileName = args[0];
-////        }
-////        else {
-////            Scanner scanner = new Scanner(System.in);
-////            System.out.print("请输入文件名：");
-////            fileName = scanner.nextLine();
-////        }
-//
-//        // 将文本转换为 DOT 文件
-//        graph.readTxt(fileName);
-//        graph.saveToDotFile("output.dot");
-//
-//        // 将 DOT 文件转换成图片
-//        graph.convertDotToImage("output.dot", "graph.png");
-//
+
 //        // 测试桥接词查询
 //        graph.findBridgeWords("explore", "new");
 //        graph.findBridgeWords("to", "worlds");
@@ -548,14 +567,7 @@ public class TextToDotGraph {
 //
 //        // 最短路迪杰斯特拉
 //        List<List<String>> shortestPaths = graph.shortestPaths("to", "and");
-//        if (shortestPaths != null && !shortestPaths.isEmpty()) {
-//            graph.saveToDotFile_color("output_with_path.dot", shortestPaths);
-//            graph.convertDotToImage("output_with_path.dot", "mini_output.png");
-//        }
-//        else{
-//            System.out.printf("There is no way from \"%s\" to \"%s\"", "to", "new");
-//        }
-//
+
 //        // 保存随机游走路径
 //        graph.randomWalk("random_walk.txt");
     }
