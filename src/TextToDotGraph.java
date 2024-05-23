@@ -7,6 +7,7 @@ import java.io.PrintWriter;
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
 
+
 public class TextToDotGraph {
     // 用于存储图的邻接表
     private Map<String, Map<String, Integer>> graph = new HashMap<>();
