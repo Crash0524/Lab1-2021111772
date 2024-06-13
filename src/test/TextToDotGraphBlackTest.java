@@ -9,7 +9,7 @@ import java.util.*;
 
 import static org.junit.Assert.*;
 
-public class TextToDotGraphTest {
+public class TextToDotGraphBlackTest {
 
     private TextToDotGraph graphTool;
 
