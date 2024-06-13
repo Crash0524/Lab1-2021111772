@@ -4,6 +4,9 @@ import main.TextToDotGraph;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import static org.junit.Assert.assertEquals;
 
 public class TextToDotGraphWhiteTest {
@@ -13,48 +16,73 @@ public class TextToDotGraphWhiteTest {
     @Before
     public void setUp() throws Exception {
         graphTool = new TextToDotGraph();
+        // 输入的graph
+        graphTool.graph.put("to", new HashMap<>(Map.of("explore", 1, "seek", 1)));
+        graphTool.graph.put("explore", new HashMap<>(Map.of("strange", 1)));
+        graphTool.graph.put("strange", new HashMap<>(Map.of("new", 1)));
+        graphTool.graph.put("new", new HashMap<>(Map.of("worlds", 1, "life", 1, "civilizations", 1)));
+        graphTool.graph.put("worlds", new HashMap<>(Map.of("and", 1)));
+        graphTool.graph.put("and", new HashMap<>(Map.of("to", 1, "new", 1)));
+        graphTool.graph.put("seek", new HashMap<>(Map.of("out", 1)));
+        graphTool.graph.put("out", new HashMap<>(Map.of("new", 1)));
+        graphTool.graph.put("life", new HashMap<>(Map.of("and", 1)));
+        graphTool.graph.put("civilizations", new HashMap<>());
     }
 
     @Test
     public void testW1() {
-        graphTool.readTxt("test_text.txt");
-        assertEquals("No \"is\" and \"art\" in the graph!", graphTool.queryBridgeWords("is","art"));
+        // 期望输出
+        String expected = "No \"is\" and \"art\" in the graph!";
+        // 对比期望输出和真实输出
+        assertEquals(expected, graphTool.queryBridgeWords("is","art"));
     }
 
     @Test
     public void testW2() {
-        graphTool.readTxt("test_text.txt");
-        assertEquals("No \"is\" in the graph!", graphTool.queryBridgeWords("is","to"));
+        // 期望输出
+        String expected = "No \"is\" in the graph!";
+        // 对比期望输出和真实输出
+        assertEquals(expected, graphTool.queryBridgeWords("is","to"));
     }
 
     @Test
     public void testW3() {
-        graphTool.readTxt("test_text.txt");
-        assertEquals("No \"is\" in the graph!", graphTool.queryBridgeWords("to","is"));
+        // 期望输出
+        String expected = "No \"is\" in the graph!";
+        // 对比期望输出和真实输出
+        assertEquals(expected, graphTool.queryBridgeWords("to","is"));
     }
 
     @Test
     public void testW4() {
-        graphTool.readTxt("test_text.txt");
-        assertEquals("No bridge words from \"civilizations\" to \"to\"!", graphTool.queryBridgeWords("civilizations","to"));
+        // 期望输出
+        String expected = "No bridge words from \"civilizations\" to \"to\"!";
+        // 对比期望输出和真实输出
+        assertEquals(expected, graphTool.queryBridgeWords("civilizations","to"));
     }
 
     @Test
     public void testW5() {
-        graphTool.readTxt("test_text.txt");
-        assertEquals("No bridge words from \"to\" to \"new\"!", graphTool.queryBridgeWords("to","new"));
+        // 期望输出
+        String expected = "No bridge words from \"to\" to \"new\"!";
+        // 对比期望输出和真实输出
+        assertEquals(expected, graphTool.queryBridgeWords("to","new"));
     }
 
     @Test
     public void testW6() {
-        graphTool.readTxt("test_text.txt");
-        assertEquals("The bridge words from \"to\" to \"out\" is: seek.", graphTool.queryBridgeWords("to","out"));
+        // 期望输出
+        String expected = "The bridge words from \"to\" to \"out\" is: seek.";
+        // 对比期望输出和真实输出
+        assertEquals(expected, graphTool.queryBridgeWords("to","out"));
     }
 
     @Test
     public void testW7() {
-        graphTool.readTxt("test_text.txt");
-        assertEquals("The bridge words from \"new\" to \"and\" are: worlds, life.", graphTool.queryBridgeWords("new","and"));
+        // 期望输出
+        String expected = "The bridge words from \"new\" to \"and\" are: worlds, life.";
+        // 对比期望输出和真实输出
+        assertEquals(expected, graphTool.queryBridgeWords("new","and"));
     }
 
 }
